@@ -1,0 +1,61 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'M2_HOME'
+    }
+
+    environment {
+        SONAR_PROJECT_KEY = 'appgestiondesprojets'
+    }
+
+    stages {
+        stage('GIT') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('backend') {
+                    sh 'mvn clean compile'
+                }
+            }
+        }
+
+        stage('Tests') {
+            steps {
+                dir('backend') {
+                    sh 'mvn test'
+                }
+            }
+        }
+
+        stage('SonarQube') {
+            steps {
+                dir('backend') {
+                    withSonarQubeEnv('SonarQubeServer') {
+                        sh 'mvn sonar:sonar -Dsonar.projectKey=$SONAR_PROJECT_KEY'
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                dir('backend') {
+                    sh 'mvn package -DskipTests'
+                }
+            }
+        }
+    }
+}
