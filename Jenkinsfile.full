@@ -47,6 +47,19 @@ pipeline {
             }
         }
 
+        stage('Start MySQL for tests') {
+            steps {
+                sh 'docker compose up -d mysql'
+                sh '''
+                    for i in $(seq 1 30); do
+                        docker exec mysql-db mysqladmin ping -h localhost -uroot -proot --silent && break
+                        echo "Waiting for MySQL..."
+                        sleep 2
+                    done
+                '''
+            }
+        }
+
         stage('4. Maven Test') {
             steps {
                 dir('backend') {
@@ -87,10 +100,9 @@ pipeline {
             }
         }
 
-         stage('8. Docker Compose Up') {
+        stage('8. Docker Compose Up') {
             steps {
-                sh 'docker compose down || true'
-                sh 'docker rm -f mysql-db backend-app frontend-app || true'
+                sh 'docker rm -f backend-app frontend-app || true'
                 sh 'docker compose up -d --build'
                 sh 'docker compose ps'
             }
